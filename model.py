@@ -1,27 +1,46 @@
+"""Neural network models for the DDPG agent.
+
+Defines the Actor (policy) and Critic (value) networks used to solve the
+Unity ML-Agents Reacher and Crawler continuous-control environments.
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 def hidden_init(layer):
+    """Return uniform weight-initialization bounds for a linear layer.
+
+    The bounds are 1 / sqrt(fan), matching the initialization used in the
+    original DDPG paper's reference implementation. Here `fan` is the
+    layer's output dimension (weight.size(0)).
+    """
     fan_in = layer.weight.data.size()[0]
     lim = 1. / np.sqrt(fan_in)
     return (-lim, lim)
 
 
-
 class Actor(nn.Module):
-    """Actor (Policy) Model."""
+    """Actor (policy) network: maps states to actions.
+
+    A fully connected network with batch normalization on the input and on
+    the first two hidden layers. The final tanh squashes actions into
+    [-1, 1], matching the torque limits of the environment.
+    """
 
     def __init__(self, state_size, action_size, seed, fc1_units=256, fc2_units=128, fc3_units=64):
-        """Initialize parameters and build model.
+        """Initialize parameters and build the model.
+
         Params
         ======
-            state_size (int): Dimension of each state
-            action_size (int): Dimension of each action
-            seed (int): Random seed
-            fc1_units (int): Number of nodes in first hidden layer
-            fc2_units (int): Number of nodes in second hidden layer
+            state_size (int): dimension of each state (33 for Reacher)
+            action_size (int): dimension of each action (4 for Reacher)
+            seed (int): random seed
+            fc1_units (int): number of nodes in first hidden layer
+            fc2_units (int): number of nodes in second hidden layer
+            fc3_units (int): number of nodes in third hidden layer
         """
         super(Actor, self).__init__()
         self.seed = torch.manual_seed(seed)
@@ -36,6 +55,7 @@ class Actor(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """Initialize weights with small uniform values (final layer near zero)."""
         self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
         self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
@@ -51,17 +71,24 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Critic (Value) Model."""
+    """Critic (value) network: maps (state, action) pairs to Q-values.
 
-    def __init__(self, state_size, action_size, seed, fcs1_units=256, fc2_units=128,fc3_units=64):
-        """Initialize parameters and build model.
+    The state passes through one hidden layer first; the action vector is
+    concatenated with that hidden representation before the second layer,
+    so the critic judges state-action pairs jointly.
+    """
+
+    def __init__(self, state_size, action_size, seed, fcs1_units=256, fc2_units=128, fc3_units=64):
+        """Initialize parameters and build the model.
+
         Params
         ======
-            state_size (int): Dimension of each state
-            action_size (int): Dimension of each action
-            seed (int): Random seed
-            fcs1_units (int): Number of nodes in the first hidden layer
-            fc2_units (int): Number of nodes in the second hidden layer
+            state_size (int): dimension of each state (33 for Reacher)
+            action_size (int): dimension of each action (4 for Reacher)
+            seed (int): random seed
+            fcs1_units (int): number of nodes in the first hidden layer
+            fc2_units (int): number of nodes in the second hidden layer
+            fc3_units (int): number of nodes in the third hidden layer
         """
         super(Critic, self).__init__()
         self.bn = nn.BatchNorm1d(state_size)
@@ -69,20 +96,27 @@ class Critic(nn.Module):
         self.seed = torch.manual_seed(seed)
         self.fcs1 = nn.Linear(state_size, fcs1_units)
         self.bn1 = nn.BatchNorm1d(fcs1_units)
-        self.fc2 = nn.Linear(fcs1_units+action_size, fc2_units)
+        self.fc2 = nn.Linear(fcs1_units + action_size, fc2_units)
         self.bn2 = nn.BatchNorm1d(fc2_units)
-        self.fc3 = nn.Linear(fc2_units,fc3_units)
+        self.fc3 = nn.Linear(fc2_units, fc3_units)
         self.fc4 = nn.Linear(fc3_units, 1)
         self.reset_parameters()
 
     def reset_parameters(self):
+        """Initialize weights with small uniform values (final layer near zero)."""
         self.fcs1.weight.data.uniform_(*hidden_init(self.fcs1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
         self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
         self.fc4.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state, action):
-        """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
+        """Build a critic (value) network that maps (state, action) pairs -> Q-values.
+
+        Note: bn1/bn2 are kept in the module so that previously saved
+        checkpoints (which contain them) still load. The forward pass
+        follows the DDPG reference layout: state-only first layer, then
+        action concatenation.
+        """
         state = self.bn(state)
         x = F.relu(self.fcs1(state))
         x = torch.cat((x, action), dim=1)

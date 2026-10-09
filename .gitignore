@@ -1,21 +1,20 @@
-./artifact/after_learn.mov
-./artifact/crawler_rf.mov
-./reacher/Crawler.app/Contents/MacOS/Crawler
-./reacher/Reacher.app/Contents/MacOS/Reacher
-./reacher/Reacher 2.app/Contents/MacOS/Reacher
-./artifact/after_learn.mov
-./artifact/crawler_rf.mov
-./reacher/Crawler.app/Contents/MacOS/Crawler
-./reacher/Reacher.app/Contents/MacOS/Reacher
-./reacher/Reacher 2.app/Contents/MacOS/Reacher
-./.git/objects/a2/303d17a216e0a95bb2f8801b9e508c5a2aa8bf
-./.git/objects/ca/03d5f6d8ea6b5551604e49f044ada82416dcc1
-./.git/objects/9a/16ed8b15be4c34f07726fd63e31b4a794f9dd6
-./artifact/after_learn.mov
-./artifact/crawler_rf.mov
-./reacher/Crawler.app/Contents/MacOS/Crawler
-./reacher/Reacher.app/Contents/MacOS/Reacher
-./reacher/Reacher 2.app/Contents/MacOS/Reacher
-./.git/objects/a2/303d17a216e0a95bb2f8801b9e508c5a2aa8bf
-./.git/objects/ca/03d5f6d8ea6b5551604e49f044ada82416dcc1
-./.git/objects/9a/16ed8b15be4c34f07726fd63e31b4a794f9dd6
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Unity environment logs
+unity-environment.log
+
+# Local training checkpoints written while training (the committed best
+# weights live under artifact/ and stay tracked)
+reacher_checkpoint_actor.pth
+reacher_checkpoint_critic.pth
+crawler_checkpoint_actor.pth
+crawler_checkpoint_critic.pth

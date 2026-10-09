@@ -1,36 +1,53 @@
-[//]: # (Image References)
+# Continuous Control with DDPG
 
-[image1]: https://user-images.githubusercontent.com/10624937/43851024-320ba930-9aff-11e8-8493-ee547c6af349.gif "Trained Agent"
-[image2]: https://user-images.githubusercontent.com/10624937/43851646-d899bf20-9b00-11e8-858c-29b5c2c94ccc.png "Crawler"
+This project solves continuous-control tasks from Unity ML-Agents with Deep Deterministic Policy Gradient (DDPG), an actor-critic method for continuous action spaces. It was built as Project 2 of the Udacity Deep Reinforcement Learning Nanodegree.
 
+## The task
 
-# Project 2: Continuous Control
+**Reacher** (the main environment): a double-jointed arm must move its hand to target locations. A reward of +0.1 is given for each step the hand stays in the goal location. The observation space has 33 variables (positions, rotations, velocities, and angular velocities of the arm). Each action is a vector of 4 torques, one per joint motor, clipped to [-1, 1].
 
+The version solved here runs **20 identical agents in parallel**, each in its own copy of the environment. The environment counts as solved when the average score (mean over the 20 agents of their undiscounted episode returns) reaches **+30 averaged over 100 consecutive episodes**.
 
-I solved the [Reacher](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#reacher) in this repo. In this environment, a double-jointed arm can move to target locations. A reward of +0.1 is provided for each step that the agent's hand is in the goal location. Thus, the goal of your agent is to maintain its position at the target location for as many time steps as possible.
+**Crawler** (bonus environment): a four-armed creature learns to walk forward. Same DDPG setup, tuned separately.
 
-The observation space consists of 33 variables corresponding to position, rotation, velocity, and angular velocities of the arm. Each action is a vector with four numbers, corresponding to torque applicable to two joints. Every entry in the action vector should be a number between -1 and 1.
+## Method
 
-Specifically, I solved the environment where 20 identical agents, each with its own copy of the environment [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P2/Reacher/Reacher.app.zip).  The task is episodic, and in order to solve the environment and its considered complete if agent gets an average score of +30 over 100 consecutive episodes. 
+- **DDPG actor-critic**: the actor maps states to torques; the critic estimates Q-values for state-action pairs and its gradient trains the actor. The critic joins the action vector with the state representation after its first 256-unit layer.
+- **Target networks** for actor and critic, soft-updated with tau = 1e-3.
+- **Shared replay buffer** (size 100k) across all parallel agents, trained on random minibatches of 256.
+- **Ornstein-Uhlenbeck noise** for temporally smooth exploration, gradient-norm clipping on the critic, and batch normalization in both networks.
 
-After each episode, we add up the rewards that each agent received (without discounting), to get a score for each agent.  This yields 20 (potentially different) scores.  We then take the average of these 20 scores. 
-- This yields an **average score** for each episode (where the average is over all 20 agents).
+Key hyperparameters: gamma = 0.99, actor lr = 1e-3, critic lr = 1e-3. See `agent.py` for the full list.
 
-The environment is considered solved, when the average (over 100 episodes) of those average scores is at least +30. 
+## Repo structure
 
+- `Continuous_Control.ipynb` - train and evaluate the DDPG agent on Reacher (20 agents).
+- `Crawler.ipynb` - train and evaluate the DDPG agent on the Crawler environment.
+- `agent.py` - the DDPG agent: replay buffer, OU noise, actor/critic updates, target soft updates.
+- `model.py` - the actor and critic network architectures.
+- `requirements.txt` - Python dependencies.
+- `artifact/` - trained weights (`*_best_actor.pth`, `*_best_critic.pth`, plus checkpoints) and demo videos (`after_learn.mov`, `crawler_rf.mov`).
+- `reacher/` - the Unity environment binaries used for training (macOS apps).
+- `reward_20_agents.png` - training curve for the 20-agent Reacher run.
 
+## How to train
 
-# Solution 
+1. Install dependencies: `pip install -r requirements.txt`
+2. Get a Unity Reacher environment binary for your platform (the `reacher/` folder ships the macOS builds; Windows and Linux builds are linked in the notebook). Training **requires the Unity ML-Agents Reacher environment**; it cannot run without it.
+3. Open `Continuous_Control.ipynb` and run the cells top to bottom. Checkpoints save after every episode, and the best weights are kept once the 100-episode average score passes +30.
+4. To watch the trained agent, run the final section of the notebook, which loads `artifact/reacher_best_actor.pth` and renders the arm with graphics on.
 
-[Notebook](Continuous_Control.ipynb.py) contains the solution that solves this environment which acheives a score of at least 30 averged over 20 agents for at least 100 consecutive episodes as shown here ![alt text](reward_20_agents.png)
- 
- I solved this problem using Actor-Critic with DDPG. You can find the model architectures for Actor and the Critic [model](model.py). In order to solve this problem I used a replay buffer, OUNoise, and clipping the gradient norm in the critic model. I used DDPG to solve this environment and blending the weights between the local and the target network. You can find the code here [agent](agent.py). 
- 
- The best weights for the best actor and critic model can be found [actor](artifact/reacher_best_actor.pth) and [critic](artifact/reacher_best_critic.pth). 
+The Crawler notebook follows the same flow for the Crawler environment.
 
+## Results
 
+The Reacher agent reaches an average score of +30 over 100 consecutive episodes across the 20 parallel agents:
 
+![Training scores](reward_20_agents.png)
 
+The best trained weights are in `artifact/` (`reacher_best_actor.pth`, `reacher_best_critic.pth`, `crawler_best_actor.pth`, `crawler_best_critic.pth`), and the demo videos show the learned behaviors.
 
+## Notes
 
-
+- The Unity environment binaries and trained weights are committed to this repo, so a fresh clone is about 514 MB.
+- The code targets the legacy Unity ML-Agents Python API (`brain_names`, `vector_observations`); it was written against `unityagents` 0.4.x and is not expected to work with modern ML-Agents releases without changes.
